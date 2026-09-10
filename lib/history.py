@@ -36,6 +36,7 @@ def log_generation(table, user, role, prompt, style, s3_key, moderation_status):
         "comentarios": [],
         "timestamp": _now_iso(),
         "estado_moderacion": moderation_status,
+        "estado_aprobacion": "pendiente",
     })
     return item_id
 
@@ -53,6 +54,7 @@ def log_edit(table, user, role, action, original_text, result_text, previous_ver
         "comentarios": [],
         "timestamp": _now_iso(),
         "estado_moderacion": moderation_status,
+        "estado_aprobacion": "pendiente",
     }
     if previous_version_id:
         item["version_anterior_id"] = previous_version_id
@@ -68,6 +70,18 @@ def add_comment(table, item_id, user, comment):
         Key={"id": item_id},
         UpdateExpression="SET comentarios = :c",
         ExpressionAttributeValues={":c": comentarios},
+    )
+
+
+def approve_item(table, item_id, approved_by):
+    table.update_item(
+        Key={"id": item_id},
+        UpdateExpression="SET estado_aprobacion = :estado, aprobado_por = :por, aprobado_en = :en",
+        ExpressionAttributeValues={
+            ":estado": "aprobado",
+            ":por": approved_by,
+            ":en": _now_iso(),
+        },
     )
 
 

@@ -26,6 +26,7 @@ def test_log_generation_creates_item(table):
     assert item["usuario"] == "ana"
     assert item["resultado"] == "images/ana/x.png"
     assert item["comentarios"] == []
+    assert item["estado_aprobacion"] == "pendiente"
 
 
 def test_log_edit_and_version_chain(table):
@@ -35,6 +36,7 @@ def test_log_edit_and_version_chain(table):
     chain = history.get_version_chain(table, second_id)
 
     assert [item["id"] for item in chain] == [first_id, second_id]
+    assert all(item["estado_aprobacion"] == "pendiente" for item in chain)
 
 
 def test_add_comment_appends_to_list(table):
@@ -71,3 +73,36 @@ def test_count_recent_generations_filters_by_user_and_time(table):
 def test_hour_ago_iso_returns_iso_timestamp_string():
     result = history.hour_ago_iso()
     assert "T" in result
+
+
+def test_approve_item_sets_approval_fields(table):
+    item_id = history.log_generation(table, "ana", "diseñador", "un gato", "anime", "images/ana/x.png", "NONE")
+
+    history.approve_item(table, item_id, "aprobador")
+
+    item = history.get_item(table, item_id)
+    assert item["estado_aprobacion"] == "aprobado"
+    assert item["aprobado_por"] == "aprobador"
+    assert "T" in item["aprobado_en"]
+
+
+def test_item_missing_estado_aprobacion_defaults_to_pendiente_when_read(table):
+    # Simulate a pre-existing item created before this feature, which has no
+    # estado_aprobacion field stored at all.
+    table.put_item(Item={
+        "id": "legacy-item",
+        "tipo": "imagen",
+        "usuario": "ana",
+        "rol": "diseñador",
+        "prompt_o_texto_original": "un gato",
+        "estilo": "anime",
+        "resultado": "images/ana/x.png",
+        "comentarios": [],
+        "timestamp": "2020-01-01T00:00:00+00:00",
+        "estado_moderacion": "NONE",
+    })
+
+    item = history.get_item(table, "legacy-item")
+
+    assert "estado_aprobacion" not in item
+    assert item.get("estado_aprobacion", "pendiente") == "pendiente"

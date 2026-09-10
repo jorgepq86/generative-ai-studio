@@ -27,6 +27,17 @@ def _comment_section(item):
                 st.rerun()
 
 
+def _approval_section(item):
+    if item.get("estado_aprobacion", "pendiente") == "aprobado":
+        st.success(f"✅ Aprobado por {item.get('aprobado_por')} el {item.get('aprobado_en')}")
+    else:
+        st.caption("⏳ Pendiente de aprobación")
+        if st.session_state["role"] == "aprobador":
+            if st.button("Aprobar", key=f"approve_{item['id']}"):
+                history.approve_item(table, item["id"], st.session_state["user"])
+                st.rerun()
+
+
 with tab_gallery:
     image_items = [item for item in items if item.get("tipo") == "imagen"]
     if not image_items:
@@ -38,6 +49,7 @@ with tab_gallery:
             url,
             caption=f"{item.get('prompt_o_texto_original', '')} ({item.get('estilo', '')}) — {item.get('usuario', '')}",
         )
+        _approval_section(item)
         _comment_section(item)
 
 with tab_history:
@@ -47,4 +59,5 @@ with tab_history:
     for item in text_items:
         st.write(f"**{item.get('accion', '')}** por {item.get('usuario', '')} — {item.get('timestamp', '')}")
         st.caption(item.get("resultado", "")[:300])
+        _approval_section(item)
         _comment_section(item)
