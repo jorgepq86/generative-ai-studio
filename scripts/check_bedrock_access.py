@@ -1,8 +1,16 @@
 """Smoke test manual: confirma que Claude y Stable Diffusion están accesibles en Bedrock.
 
 Uso: python scripts/check_bedrock_access.py
-Requiere credenciales AWS configuradas (variables de entorno o ~/.aws/credentials)
-y opcionalmente la variable AWS_REGION (por defecto: us-east-1).
+Requiere credenciales AWS configuradas (variables de entorno o ~/.aws/credentials),
+opcionalmente la variable AWS_REGION (por defecto: us-east-1), y GUARDRAIL_ID
+(+ opcionalmente GUARDRAIL_VERSION, por defecto: "1").
+
+GUARDRAIL_ID es obligatorio: la app en producción nunca invoca un modelo sin
+guardrail (lib/bedrock_client.py lo exige), así que este script prueba
+exactamente la misma ruta de código que usará la app — incluyendo si Stable
+Diffusion XL acepta guardrails en tu cuenta/región, algo que solo se puede
+confirmar contra Bedrock real. El script imprime la cabecera de acción del
+guardrail para cada modelo para que puedas verlo directamente.
 """
 import os
 import sys
@@ -12,16 +20,36 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from lib import bedrock_client
 
 
+def _guardrail_action(response_metadata):
+    return response_metadata.get("HTTPHeaders", {}).get("x-amzn-bedrock-guardrailaction", "(sin cabecera)")
+
+
 def main():
     region = os.environ.get("AWS_REGION", "us-east-1")
+    guardrail_id = os.environ.get("GUARDRAIL_ID")
+    guardrail_version = os.environ.get("GUARDRAIL_VERSION", "1")
+
+    if not guardrail_id:
+        print(
+            "ERROR: define la variable de entorno GUARDRAIL_ID antes de ejecutar este script.\n"
+            "La app nunca invoca un modelo sin guardrail, así que este smoke test tampoco lo hace.\n"
+            "Ejemplo: GUARDRAIL_ID=abc123 GUARDRAIL_VERSION=1 python scripts/check_bedrock_access.py"
+        )
+        sys.exit(1)
+
     client = bedrock_client.get_client(region)
 
     print(f"Región: {region}")
+    print(f"Guardrail: {guardrail_id} (versión {guardrail_version})")
 
     print("\nProbando Claude...")
     try:
-        text, _ = bedrock_client.invoke_claude(client, "Hola, responde con una sola palabra.", "resumir")
+        text, metadata = bedrock_client.invoke_claude(
+            client, "Hola, responde con una sola palabra.", "resumir",
+            guardrail_id=guardrail_id, guardrail_version=guardrail_version,
+        )
         print(f"OK — respuesta: {text[:100]}")
+        print(f"Acción del guardrail: {_guardrail_action(metadata)}")
     except bedrock_client.ModelAccessError as error:
         print(f"SIN ACCESO a Claude: {error}")
     except bedrock_client.BedrockError as error:
@@ -29,12 +57,21 @@ def main():
 
     print("\nProbando Stable Diffusion...")
     try:
-        image_bytes, _ = bedrock_client.invoke_stable_diffusion(client, "a red apple on a white table", "photographic")
+        image_bytes, metadata = bedrock_client.invoke_stable_diffusion(
+            client, "a red apple on a white table", "photographic",
+            guardrail_id=guardrail_id, guardrail_version=guardrail_version,
+        )
         print(f"OK — imagen recibida ({len(image_bytes)} bytes)")
+        print(f"Acción del guardrail: {_guardrail_action(metadata)}")
     except bedrock_client.ModelAccessError as error:
         print(f"SIN ACCESO a Stable Diffusion: {error}")
     except bedrock_client.BedrockError as error:
-        print(f"ERROR con Stable Diffusion: {error}")
+        print(
+            f"ERROR con Stable Diffusion: {error}\n"
+            "Nota: si este error aparece solo aquí y Claude funcionó bien, es posible que "
+            "Stable Diffusion XL no acepte guardrails de Bedrock en tu cuenta/región — "
+            "revisa la consola de Bedrock Guardrails para confirmarlo."
+        )
 
 
 if __name__ == "__main__":
