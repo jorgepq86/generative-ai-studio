@@ -73,5 +73,5 @@ if st.session_state.get("last_edit_id"):
             st.caption(version["resultado"][:200])
             if st.button("Revertir a esta versión", key=f"revert_{version['id']}"):
                 st.session_state[DRAFT_KEY] = version["resultado"]
-                st.session_state["last_edit_id"] = version.get("version_anterior_id")
+                st.session_state["last_edit_id"] = version["id"]
                 st.rerun()
