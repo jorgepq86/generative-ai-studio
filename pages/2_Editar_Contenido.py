@@ -1,6 +1,10 @@
+import logging
+
 import streamlit as st
 
 from lib import auth, clients, history, moderation
+
+logger = logging.getLogger(__name__)
 
 st.set_page_config(page_title="Editar Contenido", page_icon="✍️")
 
@@ -18,6 +22,8 @@ ACTIONS = {
 }
 
 DRAFT_KEY = "draft_text"
+if "pending_draft" in st.session_state:
+    st.session_state[DRAFT_KEY] = st.session_state.pop("pending_draft")
 if DRAFT_KEY not in st.session_state:
     st.session_state[DRAFT_KEY] = ""
 
@@ -34,7 +40,7 @@ if st.button("Aplicar"):
     quota_limit = st.secrets.get("quota_per_hour", 20)
     used = history.count_recent_generations(table, st.session_state["user"], history.hour_ago_iso())
     if used >= quota_limit:
-        st.error(f"Has alcanzado el límite de {quota_limit} ediciones por hora. Inténtalo más tarde.")
+        st.error(f"Has alcanzado el límite de {quota_limit} operaciones (imágenes + textos) por hora. Inténtalo más tarde.")
         st.stop()
 
     bedrock = clients.get_bedrock_client()
@@ -49,6 +55,7 @@ if st.button("Aplicar"):
         st.error("El texto no se pudo procesar: el contenido incumple las políticas de uso.")
         st.stop()
     except Exception as error:
+        logger.exception("Fallo al invocar Bedrock para editar texto")
         st.error(f"No se pudo aplicar la edición: {error}")
         st.stop()
 
@@ -59,9 +66,10 @@ if st.button("Aplicar"):
         )
         st.session_state["last_edit_id"] = new_id
     except Exception:
+        logger.exception("No se pudo guardar la edición en el historial")
         st.warning("La edición se aplicó pero no se pudo guardar en el historial.")
 
-    st.session_state[DRAFT_KEY] = result_text
+    st.session_state["pending_draft"] = result_text
     st.rerun()
 
 if st.session_state.get("last_edit_id"):
@@ -72,6 +80,6 @@ if st.session_state.get("last_edit_id"):
             st.write(f"**{ACTIONS.get(version['accion'], version['accion'])}** — {version['timestamp']}")
             st.caption(version["resultado"][:200])
             if st.button("Revertir a esta versión", key=f"revert_{version['id']}"):
-                st.session_state[DRAFT_KEY] = version["resultado"]
+                st.session_state["pending_draft"] = version["resultado"]
                 st.session_state["last_edit_id"] = version["id"]
                 st.rerun()

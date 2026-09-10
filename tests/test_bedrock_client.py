@@ -33,7 +33,10 @@ def test_invoke_claude_returns_edited_text():
     fake_client = MagicMock()
     fake_client.invoke_model.return_value = _claude_response("Texto resumido")
 
-    text, metadata = bedrock_client.invoke_claude(fake_client, "Texto largo original", "resumir", sleep_fn=lambda s: None)
+    text, metadata = bedrock_client.invoke_claude(
+        fake_client, "Texto largo original", "resumir",
+        guardrail_id="gr-1", guardrail_version="1", sleep_fn=lambda s: None,
+    )
 
     assert text == "Texto resumido"
     assert metadata == {"HTTPHeaders": {}}
@@ -48,7 +51,9 @@ def test_invoke_claude_retries_on_throttling_then_succeeds():
     fake_client.invoke_model.side_effect = [throttle_error, _claude_response("ok")]
     sleeps = []
 
-    text, _ = bedrock_client.invoke_claude(fake_client, "hola", "resumir", sleep_fn=sleeps.append)
+    text, _ = bedrock_client.invoke_claude(
+        fake_client, "hola", "resumir", guardrail_id="gr-1", guardrail_version="1", sleep_fn=sleeps.append
+    )
 
     assert text == "ok"
     assert sleeps == [1]
@@ -62,7 +67,9 @@ def test_invoke_claude_raises_model_access_error_without_retry():
     )
 
     with pytest.raises(bedrock_client.ModelAccessError):
-        bedrock_client.invoke_claude(fake_client, "hola", "resumir", sleep_fn=lambda s: None)
+        bedrock_client.invoke_claude(
+            fake_client, "hola", "resumir", guardrail_id="gr-1", guardrail_version="1", sleep_fn=lambda s: None
+        )
 
     assert fake_client.invoke_model.call_count == 1
 
@@ -74,7 +81,9 @@ def test_invoke_claude_raises_bedrock_error_on_validation_exception():
     )
 
     with pytest.raises(bedrock_client.BedrockError):
-        bedrock_client.invoke_claude(fake_client, "hola", "resumir", sleep_fn=lambda s: None)
+        bedrock_client.invoke_claude(
+            fake_client, "hola", "resumir", guardrail_id="gr-1", guardrail_version="1", sleep_fn=lambda s: None
+        )
 
     assert fake_client.invoke_model.call_count == 1
 
@@ -85,7 +94,9 @@ def test_invoke_stable_diffusion_returns_decoded_image_bytes():
     fake_client = MagicMock()
     fake_client.invoke_model.return_value = _sd_response(base64.b64encode(b"fake-png-bytes").decode())
 
-    image_bytes, _ = bedrock_client.invoke_stable_diffusion(fake_client, "a red apple", "anime", sleep_fn=lambda s: None)
+    image_bytes, _ = bedrock_client.invoke_stable_diffusion(
+        fake_client, "a red apple", "anime", guardrail_id="gr-1", guardrail_version="1", sleep_fn=lambda s: None
+    )
 
     assert image_bytes == b"fake-png-bytes"
 
@@ -102,3 +113,12 @@ def test_invoke_passes_guardrail_params_to_invoke_model():
     _, kwargs = fake_client.invoke_model.call_args
     assert kwargs["guardrailIdentifier"] == "gr-123"
     assert kwargs["guardrailVersion"] == "1"
+
+
+def test_invoke_claude_raises_value_error_when_guardrail_id_missing():
+    fake_client = MagicMock()
+
+    with pytest.raises(ValueError):
+        bedrock_client.invoke_claude(fake_client, "hola", "resumir", guardrail_id="", sleep_fn=lambda s: None)
+
+    fake_client.invoke_model.assert_not_called()

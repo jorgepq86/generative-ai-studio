@@ -50,6 +50,44 @@ echo "Bucket creado: $BUCKET_NAME"
 
 Usa `$BUCKET_NAME` como valor de `s3_bucket` en los secrets.
 
+**Crear un usuario IAM con permisos mínimos** (en vez de usar una clave de administrador):
+
+```bash
+cat > genai-studio-policy.json <<'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "bedrock:InvokeModel",
+      "Resource": [
+        "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0",
+        "arn:aws:bedrock:us-east-1::foundation-model/stability.stable-diffusion-xl-v1"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject"],
+      "Resource": "arn:aws:s3:::$BUCKET_NAME/images/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Scan"],
+      "Resource": "arn:aws:dynamodb:us-east-1:*:table/content_history"
+    }
+  ]
+}
+EOF
+aws iam create-user --user-name genai-studio-app
+aws iam put-user-policy --user-name genai-studio-app --policy-name genai-studio-policy --policy-document file://genai-studio-policy.json
+aws iam create-access-key --user-name genai-studio-app
+```
+
+Usa el `AccessKeyId`/`SecretAccessKey` resultantes como `aws_access_key_id`/`aws_secret_access_key`
+en los secrets, en vez de una clave de administrador. Esto es necesario para el despliegue en
+Streamlit Community Cloud, que no tiene acceso al chain de credenciales por defecto de AWS
+(`~/.aws/credentials`, rol de instancia, etc.) disponible en desarrollo local.
+
 **Crear la tabla DynamoDB:**
 
 ```bash

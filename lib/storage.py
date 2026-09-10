@@ -1,9 +1,14 @@
 import uuid
 
 
-def get_client(region_name):
+def get_client(region_name, aws_access_key_id=None, aws_secret_access_key=None):
     import boto3
-    return boto3.client("s3", region_name=region_name)
+    return boto3.client(
+        "s3",
+        region_name=region_name,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
 
 
 def save_image(client, bucket, user, image_bytes):

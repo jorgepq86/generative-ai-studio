@@ -1,6 +1,10 @@
+import logging
+
 import streamlit as st
 
 from lib import auth, clients, history, moderation, storage
+
+logger = logging.getLogger(__name__)
 
 st.set_page_config(page_title="Generar Imagen", page_icon="🖼️")
 
@@ -30,7 +34,7 @@ if st.button("Generar"):
     quota_limit = st.secrets.get("quota_per_hour", 20)
     used = history.count_recent_generations(table, st.session_state["user"], history.hour_ago_iso())
     if used >= quota_limit:
-        st.error(f"Has alcanzado el límite de {quota_limit} generaciones por hora. Inténtalo más tarde.")
+        st.error(f"Has alcanzado el límite de {quota_limit} operaciones (imágenes + textos) por hora. Inténtalo más tarde.")
         st.stop()
 
     bedrock = clients.get_bedrock_client()
@@ -45,6 +49,7 @@ if st.button("Generar"):
         st.error("La imagen no se pudo generar: el contenido incumple las políticas de uso.")
         st.stop()
     except Exception as error:
+        logger.exception("Fallo al invocar Bedrock para generar imagen")
         st.error(f"No se pudo generar la imagen: {error}")
         st.stop()
 
@@ -55,6 +60,7 @@ if st.button("Generar"):
             table, st.session_state["user"], st.session_state["role"], prompt, style_label, s3_key, moderation_status
         )
     except Exception:
+        logger.exception("No se pudo guardar la imagen generada en el historial")
         st.warning("La imagen se generó pero no se pudo guardar en el historial.")
 
     st.image(image_bytes, caption=prompt)

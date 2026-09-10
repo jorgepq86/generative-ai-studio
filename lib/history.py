@@ -4,9 +4,14 @@ from datetime import datetime, timedelta, timezone
 from boto3.dynamodb.conditions import Attr
 
 
-def get_table(region_name, table_name):
+def get_table(region_name, table_name, aws_access_key_id=None, aws_secret_access_key=None):
     import boto3
-    resource = boto3.resource("dynamodb", region_name=region_name)
+    resource = boto3.resource(
+        "dynamodb",
+        region_name=region_name,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
     return resource.Table(table_name)
 
 
@@ -72,11 +77,16 @@ def get_item(table, item_id):
 
 
 def list_items(table, tipo=None):
+    kwargs = {}
     if tipo:
-        response = table.scan(FilterExpression=Attr("tipo").eq(tipo))
-    else:
-        response = table.scan()
-    items = response.get("Items", [])
+        kwargs["FilterExpression"] = Attr("tipo").eq(tipo)
+    items = []
+    while True:
+        response = table.scan(**kwargs)
+        items.extend(response.get("Items", []))
+        if "LastEvaluatedKey" not in response:
+            break
+        kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
     return sorted(items, key=lambda i: i["timestamp"], reverse=True)
 
 
@@ -91,7 +101,12 @@ def get_version_chain(table, item_id):
 
 
 def count_recent_generations(table, user, since_iso_timestamp):
-    response = table.scan(
-        FilterExpression=Attr("usuario").eq(user) & Attr("timestamp").gte(since_iso_timestamp)
-    )
-    return len(response.get("Items", []))
+    items = []
+    kwargs = {"FilterExpression": Attr("usuario").eq(user) & Attr("timestamp").gte(since_iso_timestamp)}
+    while True:
+        response = table.scan(**kwargs)
+        items.extend(response.get("Items", []))
+        if "LastEvaluatedKey" not in response:
+            break
+        kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+    return len(items)

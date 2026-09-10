@@ -13,9 +13,14 @@ class ModelAccessError(BedrockError):
     """La cuenta/rol no tiene acceso al modelo solicitado."""
 
 
-def get_client(region_name):
+def get_client(region_name, aws_access_key_id=None, aws_secret_access_key=None):
     import boto3
-    return boto3.client("bedrock-runtime", region_name=region_name)
+    return boto3.client(
+        "bedrock-runtime",
+        region_name=region_name,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
 
 
 def _invoke_with_retry(client, model_id, body, guardrail_id=None, guardrail_version=None,
@@ -26,9 +31,13 @@ def _invoke_with_retry(client, model_id, body, guardrail_id=None, guardrail_vers
         contentType="application/json",
         accept="application/json",
     )
-    if guardrail_id:
-        kwargs["guardrailIdentifier"] = guardrail_id
-        kwargs["guardrailVersion"] = guardrail_version
+    if not guardrail_id:
+        raise ValueError(
+            "Se requiere un guardrail_id para invocar el modelo: las peticiones sin "
+            "guardrail no pasan por moderación de contenido."
+        )
+    kwargs["guardrailIdentifier"] = guardrail_id
+    kwargs["guardrailVersion"] = guardrail_version
 
     last_error = None
     for attempt in range(max_retries):
