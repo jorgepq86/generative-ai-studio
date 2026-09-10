@@ -68,59 +68,69 @@ Con el usuario **root** recién creado, antes de hacer nada más:
    - macOS: `brew install awscli` (o el instalador oficial en
      https://aws.amazon.com/cli/)
    - Verifica: `aws --version`
-2. Todavía no configures credenciales aquí — las credenciales que usará
-   la app se crean en el paso 5 con un **usuario IAM de permisos mínimos**,
-   nunca con las credenciales del usuario root. Para los comandos de este
-   manual (crear bucket, tabla, etc.) sí necesitas credenciales temporales
-   de administrador:
-   - Consola de AWS → busca "IAM" → "Users" → "Create user".
-   - Nombre: `admin-temporal` (lo puedes borrar después de este setup, o
-     dejarlo si vas a seguir administrando la cuenta por CLI).
-   - "Attach policies directly" → marca `AdministratorAccess`.
-   - Crea el usuario, entra a él → pestaña "Security credentials" →
-     "Create access key" → elige "Command Line Interface (CLI)".
-   - Copia el `Access Key ID` y `Secret Access Key`.
-3. Configura el CLI con esas credenciales temporales:
-   ```bash
-   aws configure
-   # AWS Access Key ID: <pega aquí>
-   # AWS Secret Access Key: <pega aquí>
-   # Default region name: us-east-1
-   # Default output format: json
-   ```
-4. Verifica que funciona:
+2. **No crees credenciales de administrador en tu máquina.** Para los
+   comandos de este manual (crear bucket, tabla, etc.) usa en su lugar
+   **AWS CloudShell**, que corre en el navegador ya autenticado con tu
+   sesión de consola — sin generar ningún access key de administrador:
+   - Inicia sesión en la consola de AWS.
+   - Arriba a la derecha, icono de terminal → **CloudShell**.
+   - Espera unos segundos a que arranque — ya tienes AWS CLI instalado y
+     configurado con tu identidad de consola.
+   - Ejecuta ahí mismo, en la terminal de CloudShell, todos los comandos
+     `aws ...` de este manual (secciones 5, 6, 7).
+3. Verifica que funciona:
    ```bash
    aws sts get-caller-identity
    ```
    Deberías ver tu `Account`, `UserId` y `Arn`.
 
-> A partir de aquí, todos los comandos `aws ...` de este manual usan estas
-> credenciales temporales de administrador. El usuario final que usará la
-> **app** (paso 5) tiene permisos mucho más limitados — nunca despliegues
-> la app con las credenciales de `admin-temporal`.
+> No necesitas instalar el AWS CLI en tu propio equipo para seguir este
+> manual — solo lo necesitarás localmente más adelante para desarrollo
+> (paso 11), donde sí usarás las credenciales limitadas del usuario
+> `genai-studio-app` (paso 5), nunca credenciales de administrador.
 
-## 4. Solicitar acceso a los modelos de Bedrock
+## 4. Activar los modelos de Bedrock
 
-Bedrock requiere aprobar el acceso a cada modelo antes de poder usarlo
-(normalmente es instantáneo, pero hazlo con antelación):
+AWS retiró la pantalla manual de "Model access": los modelos serverless de
+Bedrock (como Claude) se activan automáticamente en toda cuenta la primera
+vez que se invocan — no hay nada que aprobar de antemano. Aun así, hay dos
+casos donde se necesita un paso extra antes de que la app pueda usarlos:
 
-1. Consola de AWS → busca "Amazon Bedrock".
-2. **Confirma que estás en la región `us-east-1`** (arriba a la derecha).
-3. Menú lateral → "Model access" (a veces bajo "Bedrock configurations").
-4. "Manage model access" (o "Enable specific models").
-5. Marca:
-   - **Anthropic → Claude 3.5 Sonnet**
-   - **Stability AI → SDXL 1.0** (Stable Diffusion XL)
-6. "Request model access" / "Save changes".
-7. Actualiza la página tras unos segundos — el estado debe pasar a
-   **"Access granted"** para ambos. Si alguno pide justificación de uso de
-   caso, describe brevemente el proyecto (app interna de generación de
-   contenido con moderación).
+1. **Claude (Anthropic)**: la primera vez que se invoca desde una cuenta
+   nueva, puede pedir que rellenes un breve formulario de "caso de uso".
+   Esto ocurre automáticamente al invocar el modelo por primera vez — no
+   hay que activarlo por separado.
+2. **Stable Diffusion XL (Stability AI, vía AWS Marketplace)**: los modelos
+   servidos desde AWS Marketplace necesitan que alguien con permisos de
+   Marketplace lo invoque **una vez** para activarlo a nivel de cuenta;
+   después de esa primera invocación queda habilitado para todos los
+   usuarios/roles IAM de la cuenta.
+
+**Cómo activarlos en la práctica** — usa el Playground de la consola (no
+necesitas el usuario IAM de la app todavía para esto):
+
+1. Consola de AWS → Amazon Bedrock → confirma que estás en `us-east-1`.
+2. Menú lateral → "Chat / Text playground" (o "Model catalog" → abre
+   Claude 3.5 Sonnet → "Open in playground").
+3. Envía un mensaje de prueba cualquiera ("hola") — si aparece el
+   formulario de caso de uso, rellénalo brevemente y reenvía.
+4. Repite lo mismo con Stable Diffusion XL desde "Model catalog" (búscalo,
+   ábrelo en el playground de imagen) — genera una imagen de prueba con
+   cualquier prompt. Esta es la invocación que lo activa a nivel de cuenta.
+5. No hace falta esperar "Access granted" en ninguna pantalla — si el
+   playground responde, el modelo ya está activo para la cuenta.
+
+Si más adelante `scripts/check_bedrock_access.py` (paso 9) falla para
+Stable Diffusion específicamente con un error de suscripción/Marketplace,
+vuelve aquí y confirma que de verdad lo invocaste una vez desde el
+playground con un usuario que tenga permisos de Marketplace (normalmente
+cualquier usuario con acceso a la consola los tiene, salvo que tu cuenta
+tenga políticas de Service Control muy restrictivas).
 
 ## 5. Crear el usuario IAM de la aplicación (permisos mínimos)
 
-Este es el usuario cuyas credenciales pegarás en los secrets de la app —
-**no uses aquí las credenciales de `admin-temporal`**.
+Este es el usuario cuyas credenciales pegarás en los secrets de la app.
+Ejecuta esto en **CloudShell** (no en tu máquina — ver paso 3):
 
 ```bash
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
@@ -215,8 +225,9 @@ No hay un único comando CLI simple para esto — se hace en la consola:
 
 ## 9. Verificar el acceso antes de configurar la app
 
-Con las credenciales del usuario `genai-studio-app` (no `admin-temporal`)
-exportadas como variables de entorno, y el Guardrail ID del paso 8:
+Esto sí se ejecuta en tu máquina local (no en CloudShell), con las
+credenciales del usuario `genai-studio-app` del paso 5 exportadas como
+variables de entorno, y el Guardrail ID del paso 8:
 
 ```bash
 export AWS_ACCESS_KEY_ID="<AccessKeyId del paso 5>"
@@ -291,11 +302,9 @@ contraseñas de rol, y prueba generar una imagen y editar un texto.
 
 ## 13. Limpieza opcional
 
-Si creaste el usuario `admin-temporal` solo para este setup y no vas a
-seguir administrando la cuenta por CLI, puedes eliminarlo desde la consola
-de IAM una vez termines (borra primero su access key, luego el usuario).
-El usuario `genai-studio-app` debe permanecer — es el que usa la app en
-producción.
+Como usaste CloudShell para los comandos de administración, no queda
+ningún access key de administrador que limpiar. El usuario
+`genai-studio-app` debe permanecer — es el que usa la app en producción.
 
 ---
 
