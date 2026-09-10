@@ -2,7 +2,7 @@ import logging
 
 import streamlit as st
 
-from lib import auth, clients, history, moderation
+from lib import auth, clients, diffing, history, moderation
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +76,12 @@ if st.session_state.get("last_edit_id"):
     table = clients.get_history_table()
     chain = history.get_version_chain(table, st.session_state["last_edit_id"])
     with st.expander("Historial de versiones"):
-        for version in chain:
+        for index, version in enumerate(chain):
             st.write(f"**{ACTIONS.get(version['accion'], version['accion'])}** — {version['timestamp']}")
+            if index > 0:
+                previous_version = chain[index - 1]
+                diff_html = diffing.word_diff_html(previous_version["resultado"], version["resultado"])
+                st.markdown(diff_html, unsafe_allow_html=True)
             st.caption(version["resultado"][:200])
             if st.button("Revertir a esta versión", key=f"revert_{version['id']}"):
                 st.session_state["pending_draft"] = version["resultado"]
