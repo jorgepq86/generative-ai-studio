@@ -55,12 +55,13 @@ Con el usuario **root** recién creado, antes de hacer nada más:
    Free Tier Usage Alerts" y "Receive Billing Alerts". Luego ve a
    "Budgets" → "Create budget" → "Cost budget" → pon un límite mensual
    (por ejemplo, $20) y tu correo para el aviso.
-3. **Elige tu región principal**: este proyecto usa `us-east-1` (Norte de
-   Virginia) por defecto, porque ahí están disponibles tanto Claude Haiku 4.5
-   como Nova Canvas en Bedrock. Puedes cambiarla más adelante en los
-   secrets si prefieres otra región donde ambos modelos también estén
-   disponibles, pero **no lo hagas** a menos que sepas que tu región
-   alternativa los soporta — si no, la app fallará al invocar los modelos.
+3. **Elige tu región principal**: este proyecto usa `us-west-2` (Oregón)
+   por defecto, porque ahí está disponible **Stable Diffusion 3.5 Large** (el
+   modelo de imágenes de Stability AI que usa la app — ver la nota más
+   abajo). Claude también es accesible desde esta región vía su inference
+   profile multi-región. No cambies de región a menos que hayas verificado
+   que Stable Diffusion 3.5 Large también está disponible ahí — si no, la app
+   fallará al generar imágenes.
 
 ## 3. Instalar y configurar el AWS CLI
 
@@ -92,37 +93,42 @@ Con el usuario **root** recién creado, antes de hacer nada más:
 ## 4. Activar los modelos de Bedrock
 
 AWS retiró la pantalla manual de "Model access": los modelos serverless de
-Bedrock (Claude, Nova Canvas) se activan automáticamente en toda cuenta la
-primera vez que se invocan — no hay nada que aprobar de antemano. La
-primera vez que invocas Claude desde una cuenta nueva, puede pedirte que
+Bedrock (Claude, Stable Diffusion 3.5 Large) se activan automáticamente en toda
+cuenta la primera vez que se invocan — no hay nada que aprobar de antemano.
+La primera vez que invocas Claude desde una cuenta nueva, puede pedirte que
 rellenes un breve formulario de "caso de uso" — ocurre automáticamente, no
 hay que activarlo por separado.
 
 **Cómo probarlos en la práctica** — usa el Playground de la consola (no
 necesitas el usuario IAM de la app todavía para esto):
 
-1. Consola de AWS → Amazon Bedrock → confirma que estás en `us-east-1`.
+1. Consola de AWS → Amazon Bedrock → confirma que estás en `us-west-2`.
 2. Menú lateral → "Chat / Text playground" → abre **Claude Haiku 4.5** →
    envía un mensaje de prueba ("hola") — si aparece el formulario de caso
    de uso, rellénalo brevemente y reenvía.
-3. Menú lateral → "Image playground" (o "Model catalog" → busca **Nova
-   Canvas**, aparece marcado "Legacy" pero sigue plenamente soportado) →
-   genera una imagen de prueba con cualquier prompt.
+3. Menú lateral → "Image playground" (o "Model catalog" → pestaña
+   "Serverless" → filtra por "Output modalities = Image" → busca **Stable
+   Image Core**) → genera una imagen de prueba con cualquier prompt.
 4. No hace falta esperar "Access granted" en ninguna pantalla — si el
    playground responde, el modelo ya está activo para la cuenta.
 
 > **Nota sobre el modelo de imágenes:** el enunciado original de este caso
-> práctico pide Stable Diffusion. En Bedrock, Stable Diffusion XL 1.0 ya no
-> se ofrece como modelo serverless — solo está disponible vía AWS
-> Marketplace desplegado como endpoint dedicado de SageMaker, con coste
-> fijo por hora (`ml.p5.48xlarge` a partir de ~$137/hora **de software**,
-> más el coste de la instancia, corriendo esté en uso o no). La versión más
-> reciente (Stable Diffusion 3.5 Large) solo está disponible vía "Bedrock
-> Marketplace" con el mismo modelo de coste por hora. Para un proyecto de
-> este tipo, ese coste no es razonable, así que se sustituyó por **Amazon
-> Nova Canvas** (`amazon.nova-canvas-v1:0`), que cumple la misma función —
-> generación de imágenes a partir de texto con distintos estilos — de forma
-> serverless (facturación solo por imagen generada, sin coste si no se usa).
+> práctico pide Stable Diffusion. Otras opciones descartadas durante la
+> búsqueda, por si te sirve de referencia:
+> - **Stable Diffusion XL 1.0**: ya no se ofrece como modelo serverless de
+>   Bedrock — solo vía AWS Marketplace, desplegado como endpoint dedicado
+>   de SageMaker con coste fijo por hora (`ml.p5.48xlarge` a partir de
+>   ~$137/hora **de software**, corriendo esté en uso o no).
+> - **Amazon Nova Canvas**: serverless y sin coste fijo, pero está marcado
+>   "Legacy" y AWS revoca el acceso a modelos legacy sin uso activo en los
+>   últimos 30 días — no es fiable para un proyecto que no se usa a diario.
+> - **Stable Image Core/Ultra**: serverless, de Stability AI, sin marca
+>   "Legacy" — funcionan bien, pero no se llaman literalmente "Stable
+>   Diffusion".
+>
+> La app usa **Stable Diffusion 3.5 Large** (`stability.sd3-5-large-v1:0`),
+> serverless y disponible en `us-west-2` — por eso el proyecto usa esa
+> región en vez de `us-east-1`.
 
 > **Nota sobre Claude e inference profiles:** los modelos Anthropic más
 > recientes en Bedrock ya no se pueden invocar por su ID de modelo directo —
@@ -134,14 +140,15 @@ necesitas el usuario IAM de la app todavía para esto):
 > confírmalo en Bedrock → "Cross-region inference" antes de asumir que el
 > ID directo funciona.
 
-> **Nota sobre guardrails y modelos de imagen:** Nova Canvas (y los modelos
-> de generación de imágenes de Bedrock en general) **no aceptan** un
-> guardrail dentro de `invoke_model` — AWS devuelve `ValidationException:
-> Guardrail is not supported with the chosen model`. Por eso la app genera
-> la imagen primero y la evalúa después con la API independiente
-> `ApplyGuardrail` (`lib/bedrock_client.py: apply_guardrail_image`). Esto
-> requiere el permiso IAM `bedrock:ApplyGuardrail` además de
-> `bedrock:InvokeModel` (ya incluido en la política del paso 5).
+> **Nota sobre guardrails y modelos de imagen:** Stable Diffusion 3.5 Large (y los
+> modelos de generación de imágenes de Bedrock en general) **no aceptan**
+> un guardrail dentro de `invoke_model` — AWS devuelve
+> `ValidationException: Guardrail is not supported with the chosen model`.
+> Por eso la app genera la imagen primero y la evalúa después con la API
+> independiente `ApplyGuardrail` (`lib/bedrock_client.py:
+> apply_guardrail_image`). Esto requiere el permiso IAM
+> `bedrock:ApplyGuardrail` además de `bedrock:InvokeModel` (ya incluido en
+> la política del paso 5).
 
 ## 5. Crear el usuario IAM de la aplicación (permisos mínimos)
 
@@ -160,15 +167,15 @@ cat > genai-studio-policy.json <<EOF
       "Effect": "Allow",
       "Action": "bedrock:InvokeModel",
       "Resource": [
-        "arn:aws:bedrock:us-east-1:${ACCOUNT_ID}:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0",
+        "arn:aws:bedrock:us-west-2:${ACCOUNT_ID}:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0",
         "arn:aws:bedrock:us-*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
-        "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-canvas-v1:0"
+        "arn:aws:bedrock:us-west-2::foundation-model/stability.sd3-5-large-v1:0"
       ]
     },
     {
       "Effect": "Allow",
       "Action": "bedrock:ApplyGuardrail",
-      "Resource": "arn:aws:bedrock:us-east-1:${ACCOUNT_ID}:guardrail/*"
+      "Resource": "arn:aws:bedrock:us-west-2:${ACCOUNT_ID}:guardrail/*"
     },
     {
       "Effect": "Allow",
@@ -178,7 +185,7 @@ cat > genai-studio-policy.json <<EOF
     {
       "Effect": "Allow",
       "Action": ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Scan"],
-      "Resource": "arn:aws:dynamodb:us-east-1:${ACCOUNT_ID}:table/content_history"
+      "Resource": "arn:aws:dynamodb:us-west-2:${ACCOUNT_ID}:table/content_history"
     }
   ]
 }
@@ -206,7 +213,7 @@ secrets de Streamlit (paso 9).
 ## 6. Crear el bucket S3
 
 ```bash
-aws s3api create-bucket --bucket "$BUCKET_NAME" --region us-east-1
+aws s3api create-bucket --bucket "$BUCKET_NAME" --region us-west-2
 aws s3api put-bucket-encryption --bucket "$BUCKET_NAME" \
   --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
 aws s3api put-public-access-block --bucket "$BUCKET_NAME" \
@@ -225,7 +232,7 @@ aws dynamodb create-table \
   --key-schema AttributeName=id,KeyType=HASH \
   --billing-mode PAY_PER_REQUEST \
   --sse-specification Enabled=true \
-  --region us-east-1
+  --region us-west-2
 ```
 
 Verifica que quedó activa (puede tardar unos segundos):
@@ -244,8 +251,8 @@ No hay un único comando CLI simple para esto — se hace en la consola:
 3. **Content filters** ("Configure content filters"): activa "Configure
    harmful categories filters" y para cada categoría (Hate, Insults,
    Sexual, Violence, Misconduct) marca **tanto "Text" como "Image"** (esta
-   app modera texto vía Claude e imágenes vía Nova Canvas con el mismo
-   guardrail — si dejas solo "Text", las imágenes generadas no pasarían
+   app modera texto vía Claude e imágenes vía Stable Diffusion 3.5 Large con el
+   mismo guardrail — si dejas solo "Text", las imágenes generadas no pasarían
    por el filtro). "Misconduct" normalmente solo ofrece "Text", eso es
    normal. Acción: **Block**. Umbral: **Medium** o superior.
 4. **Denied topics**: acción **Block** (no "Detect" — el código de la app
@@ -287,15 +294,16 @@ variables de entorno, y el Guardrail ID del paso 8:
 ```bash
 export AWS_ACCESS_KEY_ID="<AccessKeyId del paso 5>"
 export AWS_SECRET_ACCESS_KEY="<SecretAccessKey del paso 5>"
-export AWS_REGION="us-east-1"
+export AWS_REGION="us-west-2"
 export GUARDRAIL_ID="<Guardrail ID del paso 8>"
 export GUARDRAIL_VERSION="1"   # o el número de versión que hayas publicado
 
 python scripts/check_bedrock_access.py
 ```
 
-Deberías ver `OK` para Claude y para Nova Canvas, con la acción del
-guardrail impresa para cada uno (normalmente `NONE`, que significa "no
+Deberías ver `OK` para Claude, para la generación con Stable Diffusion 3.5 Large, y
+para el `ApplyGuardrail` sobre la imagen generada, con la acción del
+guardrail impresa (normalmente `NONE`, que significa "no
 intervenido" — es el resultado correcto para un prompt inofensivo).
 
 Si ves `SIN ACCESO`, vuelve al paso 4: el acceso al modelo no está concedido
@@ -312,7 +320,7 @@ tienes de los pasos anteriores:
 
 | Campo en secrets.toml       | De dónde sale                              |
 |------------------------------|---------------------------------------------|
-| `aws_region`                 | `us-east-1` (o la región que hayas elegido) |
+| `aws_region`                 | `us-west-2` (o la región que hayas elegido) |
 | `s3_bucket`                   | `$BUCKET_NAME` del paso 6                   |
 | `dynamodb_table`              | `content_history` (nombre fijo del paso 7)  |
 | `guardrail_id`                | Guardrail ID del paso 8                     |
@@ -365,7 +373,7 @@ ningún access key de administrador que limpiar. El usuario
 - Nombre del bucket S3 (`genai-studio-images-<ACCOUNT_ID>`)
 - Nombre de la tabla DynamoDB (`content_history`)
 - Guardrail ID y versión
-- Región (`us-east-1`)
+- Región (`us-west-2`)
 - Tres contraseñas de rol que hayas elegido
 
 Con eso, `.streamlit/secrets.toml` queda completo y la app está lista para

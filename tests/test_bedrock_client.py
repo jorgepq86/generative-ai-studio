@@ -99,7 +99,7 @@ def test_invoke_image_returns_decoded_image_bytes():
     assert image_bytes == b"fake-png-bytes"
 
 
-def test_invoke_image_builds_nova_canvas_request_body():
+def test_invoke_image_builds_stable_image_core_request_body():
     import base64
 
     fake_client = MagicMock()
@@ -109,9 +109,8 @@ def test_invoke_image_builds_nova_canvas_request_body():
 
     _, kwargs = fake_client.invoke_model.call_args
     body = json.loads(kwargs["body"])
-    assert body["taskType"] == "TEXT_IMAGE"
-    assert body["textToImageParams"]["text"] == "a red apple, anime style"
-    assert "imageGenerationConfig" in body
+    assert body["prompt"] == "a red apple, anime style"
+    assert body["output_format"] == "png"
 
 
 def test_invoke_image_does_not_pass_guardrail_params():

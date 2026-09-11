@@ -1,15 +1,9 @@
-"""Smoke test manual: confirma que Claude y Nova Canvas están accesibles en Bedrock.
+"""Smoke test manual: confirma que Claude y Stable Diffusion 3.5 Large están accesibles en Bedrock.
 
 Uso: python scripts/check_bedrock_access.py
 Requiere credenciales AWS configuradas (variables de entorno o ~/.aws/credentials),
-opcionalmente la variable AWS_REGION (por defecto: us-east-1), y GUARDRAIL_ID
+opcionalmente la variable AWS_REGION (por defecto: us-west-2), y GUARDRAIL_ID
 (+ opcionalmente GUARDRAIL_VERSION, por defecto: "1").
-
-GUARDRAIL_ID es obligatorio: la app en producción nunca invoca un modelo sin
-guardrail (lib/bedrock_client.py lo exige), así que este script prueba
-exactamente la misma ruta de código que usará la app. El script imprime la
-cabecera de acción del guardrail para cada modelo para que puedas verlo
-directamente.
 """
 import os
 import sys
@@ -24,13 +18,13 @@ def _guardrail_action(response_metadata):
 
 
 def _detail(error):
-    """Mensaje de diagnóstico real de AWS, no el mensaje genérico pensado para la UI."""
+    """Devuelve el mensaje de error original de AWS, si está disponible."""
     cause = error.__cause__
     return f"\n  Detalle real de AWS: {cause}" if cause else ""
 
 
 def main():
-    region = os.environ.get("AWS_REGION", "us-east-1")
+    region = os.environ.get("AWS_REGION", "us-west-2")
     guardrail_id = os.environ.get("GUARDRAIL_ID")
     guardrail_version = os.environ.get("GUARDRAIL_VERSION", "1")
 
@@ -60,15 +54,15 @@ def main():
     except bedrock_client.BedrockError as error:
         print(f"ERROR con Claude: {error}{_detail(error)}")
 
-    print("\nProbando Nova Canvas...")
+    print("\nProbando Stable Diffusion 3.5 Large...")
     try:
         image_bytes, _ = bedrock_client.invoke_image(client, "a red apple on a white table", "photorealistic, highly detailed")
         print(f"OK — imagen recibida ({len(image_bytes)} bytes)")
     except bedrock_client.ModelAccessError as error:
-        print(f"SIN ACCESO a Nova Canvas: {error}{_detail(error)}")
+        print(f"SIN ACCESO a Stable Diffusion 3.5 Large: {error}{_detail(error)}")
         image_bytes = None
     except bedrock_client.BedrockError as error:
-        print(f"ERROR con Nova Canvas: {error}{_detail(error)}")
+        print(f"ERROR con Stable Diffusion 3.5 Large: {error}{_detail(error)}")
         image_bytes = None
 
     if image_bytes:

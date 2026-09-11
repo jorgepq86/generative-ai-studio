@@ -87,8 +87,6 @@ def test_approve_item_sets_approval_fields(table):
 
 
 def test_item_missing_estado_aprobacion_defaults_to_pendiente_when_read(table):
-    # Simulate a pre-existing item created before this feature, which has no
-    # estado_aprobacion field stored at all.
     table.put_item(Item={
         "id": "legacy-item",
         "tipo": "imagen",

@@ -3,13 +3,7 @@ import html
 
 
 def word_diff_html(old_text, new_text):
-    """Render a simple word-level diff between two texts as HTML.
-
-    Words removed from ``old_text`` are wrapped in a strikethrough span,
-    words added in ``new_text`` are wrapped in a highlighted span, and
-    unchanged words are left as plain text. Intended to be rendered via
-    ``st.markdown(..., unsafe_allow_html=True)``.
-    """
+    """Render a word-level diff between two texts as HTML."""
     old_words = (old_text or "").split()
     new_words = (new_text or "").split()
 

@@ -1,11 +1,14 @@
 # Generative AI Studio
 
-Aplicación web sobre Amazon Bedrock (Claude + Amazon Nova Canvas) para generación de
-imágenes y edición de contenido, con roles básicos, historial y moderación.
+Aplicación web sobre Amazon Bedrock (Claude + Stable Diffusion 3.5 Large, de Stability AI)
+para generación de imágenes y edición de contenido, con roles básicos, historial y
+moderación.
 
-> El enunciado original pide Stable Diffusion; se sustituyó por Nova Canvas porque
-> Stable Diffusion ya no está disponible como modelo serverless en Bedrock — solo vía
-> un endpoint de SageMaker con coste fijo por hora (~$137+/hora). Ver el detalle en
+> La versión original de Stable Diffusion en Bedrock (XL 1.0) ya no está disponible
+> como serverless — solo vía un endpoint de SageMaker con coste fijo por hora
+> (~$137+/hora). La app usa en su lugar Stable Diffusion 3.5 Large, serverless y sin
+> coste fijo, disponible en `us-west-2` (por eso el proyecto usa esa región en vez de
+> `us-east-1`). Ver el detalle completo en
 > [`docs/AWS_SETUP.md`](docs/AWS_SETUP.md#4-activar-los-modelos-de-bedrock).
 
 Ver el diseño completo en `docs/superpowers/specs/2026-09-10-gen-ai-studio-design.md`.

@@ -89,25 +89,12 @@ def invoke_claude(client, text, action, model_id="us.anthropic.claude-haiku-4-5-
     return result_text, response["ResponseMetadata"]
 
 
-def invoke_image(client, prompt, style, model_id="amazon.nova-canvas-v1:0", sleep_fn=time.sleep):
-    """Genera una imagen con Nova Canvas.
-
-    Nova Canvas no acepta guardrailIdentifier/guardrailVersion en invoke_model
-    (Bedrock devuelve ValidationException: "Guardrail is not supported with the
-    chosen model") — a diferencia de los modelos de texto, los modelos de imagen
-    de Bedrock no soportan guardrails inline. La imagen generada aquí debe pasar
-    por apply_guardrail_image() por separado antes de mostrarse al usuario.
-    """
+def invoke_image(client, prompt, style, model_id="stability.sd3-5-large-v1:0", sleep_fn=time.sleep):
+    """Genera una imagen a partir de un prompt de texto y un estilo."""
     full_prompt = f"{prompt}, {style}" if style else prompt
     body = {
-        "taskType": "TEXT_IMAGE",
-        "textToImageParams": {"text": full_prompt},
-        "imageGenerationConfig": {
-            "numberOfImages": 1,
-            "height": 1024,
-            "width": 1024,
-            "cfgScale": 6.5,
-        },
+        "prompt": full_prompt,
+        "output_format": "png",
     }
     response = _invoke_with_retry(client, model_id, body, sleep_fn=sleep_fn)
     payload = json.loads(response["body"].read())
@@ -117,13 +104,7 @@ def invoke_image(client, prompt, style, model_id="amazon.nova-canvas-v1:0", slee
 
 def apply_guardrail_image(client, image_bytes, guardrail_id, guardrail_version,
                            image_format="png", max_retries=3, sleep_fn=time.sleep):
-    """Evalúa una imagen ya generada contra un guardrail vía la API ApplyGuardrail
-    (independiente de invoke_model — es la vía soportada por AWS para moderar
-    salidas de modelos de imagen, que no aceptan guardrails inline).
-
-    Devuelve "NONE" (contenido limpio) o "INTERVENED" (el guardrail bloqueó el
-    contenido), en el mismo vocabulario que usa el resto de la app.
-    """
+    """Evalúa una imagen contra un guardrail. Devuelve "NONE" o "INTERVENED"."""
     if not guardrail_id:
         raise ValueError(
             "Se requiere un guardrail_id para evaluar la imagen: las imágenes sin "

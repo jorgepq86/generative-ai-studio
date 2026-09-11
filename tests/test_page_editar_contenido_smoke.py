@@ -21,9 +21,6 @@ def test_page_renders_form_when_authenticated():
 
 
 def test_aplicar_button_happy_path_does_not_raise():
-    """Regression test for the widget-state crash (StreamlitWidgetAlreadyInstantiatedError)
-    that happened when the Aplicar handler wrote directly to the text_area's session_state
-    key after the widget had already been instantiated in the same run."""
     at = AppTest.from_file("pages/2_Editar_Contenido.py")
     at.session_state["role"] = "redactor"
     at.session_state["user"] = "redactor"
