@@ -208,10 +208,35 @@ No hay un único comando CLI simple para esto — se hace en la consola:
 1. Consola de AWS → Amazon Bedrock → menú lateral "Guardrails" → "Create
    guardrail".
 2. Nombre: `genai-studio-guardrail`.
-3. **Content filters**: activa todas las categorías (odio, violencia,
-   contenido sexual, insultos) en nivel medio o alto.
-4. **Denied topics**: añade uno describiendo, por ejemplo, "Imitación del
-   estilo de artistas o personajes con derechos de autor específicos".
+3. **Content filters** ("Configure content filters"): activa "Configure
+   harmful categories filters" y para cada categoría (Hate, Insults,
+   Sexual, Violence, Misconduct) marca **tanto "Text" como "Image"** (esta
+   app modera texto vía Claude e imágenes vía Nova Canvas con el mismo
+   guardrail — si dejas solo "Text", las imágenes generadas no pasarían
+   por el filtro). "Misconduct" normalmente solo ofrece "Text", eso es
+   normal. Acción: **Block**. Umbral: **Medium** o superior.
+4. **Denied topics**: acción **Block** (no "Detect" — el código de la app
+   asume que el guardrail bloquea de verdad; un modo que solo detecta sin
+   bloquear dejaría pasar el contenido igual). Añade al menos estos dos
+   (cubren directamente "mitigación de sesgos" y "protección de derechos
+   de autor" del enunciado):
+   - **Imitación de artistas o personajes con derechos de autor** — definición:
+     "Solicitudes para generar imágenes o texto que imiten el estilo
+     distintivo de un artista específico, o que representen personajes,
+     marcas o personajes de ficción protegidos por derechos de autor."
+     Frases de ejemplo: "genera esto al estilo de [artista]", "haz un
+     dibujo de [personaje de una franquicia]", "imita el logo de [marca]".
+   - **Contenido discriminatorio o con sesgos** — definición: "Solicitudes
+     que promuevan estereotipos, discriminación o trato desigual basado en
+     raza, género, religión, orientación sexual, discapacidad u otras
+     características protegidas." Frases de ejemplo: "muestra a [grupo]
+     como inferior", "genera un anuncio que asuma que solo [género] hace
+     [tarea]".
+
+   Opcionalmente, para una herramienta de marketing puedes añadir también
+   "Afirmaciones publicitarias engañosas o no verificadas" (afirmaciones
+   médicas/financieras sin respaldo) y "Contenido político o electoral" —
+   no los exige el enunciado, pero son razonables para este caso de uso.
 5. **PII filters**: activa el bloqueo/enmascarado de PII común (email,
    teléfono, tarjetas de crédito).
 6. Guarda el guardrail.
