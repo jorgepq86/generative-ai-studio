@@ -4,10 +4,14 @@ from lib import moderation
 
 
 def test_generate_image_moderated_returns_bytes_when_not_intervened(monkeypatch):
-    def fake_invoke(client, prompt, style, guardrail_id=None, guardrail_version=None, sleep_fn=None):
-        return b"image-bytes", {"HTTPHeaders": {"x-amzn-bedrock-guardrailaction": "NONE"}}
+    def fake_invoke_image(client, prompt, style, sleep_fn=None):
+        return b"image-bytes", {"HTTPHeaders": {}}
 
-    monkeypatch.setattr(moderation.bedrock_client, "invoke_image", fake_invoke)
+    def fake_apply_guardrail(client, image_bytes, guardrail_id, guardrail_version, sleep_fn=None):
+        return "NONE"
+
+    monkeypatch.setattr(moderation.bedrock_client, "invoke_image", fake_invoke_image)
+    monkeypatch.setattr(moderation.bedrock_client, "apply_guardrail_image", fake_apply_guardrail)
 
     image_bytes, status = moderation.generate_image_moderated(
         client=object(), prompt="un gato", style="anime", guardrail_id="gr-1", guardrail_version="1"
@@ -18,10 +22,14 @@ def test_generate_image_moderated_returns_bytes_when_not_intervened(monkeypatch)
 
 
 def test_generate_image_moderated_raises_when_intervened(monkeypatch):
-    def fake_invoke(client, prompt, style, guardrail_id=None, guardrail_version=None, sleep_fn=None):
-        return b"", {"HTTPHeaders": {"x-amzn-bedrock-guardrailaction": "INTERVENED"}}
+    def fake_invoke_image(client, prompt, style, sleep_fn=None):
+        return b"image-bytes", {"HTTPHeaders": {}}
 
-    monkeypatch.setattr(moderation.bedrock_client, "invoke_image", fake_invoke)
+    def fake_apply_guardrail(client, image_bytes, guardrail_id, guardrail_version, sleep_fn=None):
+        return "INTERVENED"
+
+    monkeypatch.setattr(moderation.bedrock_client, "invoke_image", fake_invoke_image)
+    monkeypatch.setattr(moderation.bedrock_client, "apply_guardrail_image", fake_apply_guardrail)
 
     with pytest.raises(moderation.ModerationBlocked):
         moderation.generate_image_moderated(

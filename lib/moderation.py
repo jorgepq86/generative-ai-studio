@@ -14,10 +14,13 @@ def _guardrail_status(response_metadata):
 
 
 def generate_image_moderated(client, prompt, style, guardrail_id, guardrail_version, sleep_fn=time.sleep):
-    image_bytes, metadata = bedrock_client.invoke_image(
-        client, prompt, style, guardrail_id=guardrail_id, guardrail_version=guardrail_version, sleep_fn=sleep_fn
+    # Nova Canvas (y los modelos de imagen de Bedrock en general) no aceptan
+    # guardrails inline en invoke_model, así que la imagen se genera primero y
+    # se evalúa después con la API independiente ApplyGuardrail.
+    image_bytes, _ = bedrock_client.invoke_image(client, prompt, style, sleep_fn=sleep_fn)
+    status = bedrock_client.apply_guardrail_image(
+        client, image_bytes, guardrail_id, guardrail_version, sleep_fn=sleep_fn
     )
-    status = _guardrail_status(metadata)
     if status == "INTERVENED":
         raise ModerationBlocked()
     return image_bytes, status

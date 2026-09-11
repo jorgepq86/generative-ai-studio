@@ -62,16 +62,26 @@ def main():
 
     print("\nProbando Nova Canvas...")
     try:
-        image_bytes, metadata = bedrock_client.invoke_image(
-            client, "a red apple on a white table", "photorealistic, highly detailed",
-            guardrail_id=guardrail_id, guardrail_version=guardrail_version,
-        )
+        image_bytes, _ = bedrock_client.invoke_image(client, "a red apple on a white table", "photorealistic, highly detailed")
         print(f"OK — imagen recibida ({len(image_bytes)} bytes)")
-        print(f"Acción del guardrail: {_guardrail_action(metadata)}")
     except bedrock_client.ModelAccessError as error:
         print(f"SIN ACCESO a Nova Canvas: {error}{_detail(error)}")
+        image_bytes = None
     except bedrock_client.BedrockError as error:
         print(f"ERROR con Nova Canvas: {error}{_detail(error)}")
+        image_bytes = None
+
+    if image_bytes:
+        print("\nProbando ApplyGuardrail sobre la imagen generada...")
+        try:
+            status = bedrock_client.apply_guardrail_image(
+                client, image_bytes, guardrail_id, guardrail_version,
+            )
+            print(f"OK — acción del guardrail: {status}")
+        except bedrock_client.ModelAccessError as error:
+            print(f"SIN ACCESO a ApplyGuardrail: {error}{_detail(error)}")
+        except bedrock_client.BedrockError as error:
+            print(f"ERROR con ApplyGuardrail: {error}{_detail(error)}")
 
 
 if __name__ == "__main__":

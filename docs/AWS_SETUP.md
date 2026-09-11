@@ -124,6 +124,25 @@ necesitas el usuario IAM de la app todavía para esto):
 > generación de imágenes a partir de texto con distintos estilos — de forma
 > serverless (facturación solo por imagen generada, sin coste si no se usa).
 
+> **Nota sobre Claude e inference profiles:** los modelos Anthropic más
+> recientes en Bedrock ya no se pueden invocar por su ID de modelo directo —
+> AWS devuelve `ValidationException: ... on-demand throughput isn't
+> supported`. Hay que usar el **"inference profile"** correspondiente, cuyo
+> ID lleva un prefijo de región (`us.` para EE.UU.):
+> `us.anthropic.claude-haiku-4-5-20251001-v1:0`. Ya está puesto así en
+> `lib/bedrock_client.py`. Si en el futuro cambias de modelo de Claude,
+> confírmalo en Bedrock → "Cross-region inference" antes de asumir que el
+> ID directo funciona.
+
+> **Nota sobre guardrails y modelos de imagen:** Nova Canvas (y los modelos
+> de generación de imágenes de Bedrock en general) **no aceptan** un
+> guardrail dentro de `invoke_model` — AWS devuelve `ValidationException:
+> Guardrail is not supported with the chosen model`. Por eso la app genera
+> la imagen primero y la evalúa después con la API independiente
+> `ApplyGuardrail` (`lib/bedrock_client.py: apply_guardrail_image`). Esto
+> requiere el permiso IAM `bedrock:ApplyGuardrail` además de
+> `bedrock:InvokeModel` (ya incluido en la política del paso 5).
+
 ## 5. Crear el usuario IAM de la aplicación (permisos mínimos)
 
 Este es el usuario cuyas credenciales pegarás en los secrets de la app.
@@ -141,9 +160,15 @@ cat > genai-studio-policy.json <<EOF
       "Effect": "Allow",
       "Action": "bedrock:InvokeModel",
       "Resource": [
-        "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
+        "arn:aws:bedrock:us-east-1:${ACCOUNT_ID}:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0",
+        "arn:aws:bedrock:us-*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
         "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-canvas-v1:0"
       ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": "bedrock:ApplyGuardrail",
+      "Resource": "arn:aws:bedrock:us-east-1:${ACCOUNT_ID}:guardrail/*"
     },
     {
       "Effect": "Allow",
@@ -169,6 +194,14 @@ El último comando imprime un `AccessKeyId` y `SecretAccessKey` — **guárdalos
 ahora**, el `SecretAccessKey` no se puede volver a consultar después. Estos
 son los valores para `aws_access_key_id`/`aws_secret_access_key` en los
 secrets de Streamlit (paso 9).
+
+> El ARN del `inference-profile` para Claude y el rango `us-*` en el ARN del
+> `foundation-model` son la mejor aproximación disponible sin acceso a un
+> entorno real — los inference profiles multi-región pueden reenviar la
+> petición a varias regiones de EE.UU. bajo el capó. Si al ejecutar
+> `check_bedrock_access.py` (paso 9) ves `AccessDeniedException` para
+> Claude, es que la política necesita un ajuste aquí — el detalle real del
+> error (gracias al script) te dirá exactamente qué ARN falta.
 
 ## 6. Crear el bucket S3
 
