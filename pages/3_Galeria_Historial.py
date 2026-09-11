@@ -57,7 +57,11 @@ def _render_history():
         st.info("Todavía no se han editado textos.")
     for item in text_items:
         st.write(f"**{item.get('accion', '')}** por {item.get('usuario', '')} — {item.get('timestamp', '')}")
-        st.caption(item.get("resultado", "")[:300])
+        with st.expander("Ver texto completo"):
+            st.markdown("**Texto original:**")
+            st.write(item.get("prompt_o_texto_original", ""))
+            st.markdown("**Resultado:**")
+            st.write(item.get("resultado", ""))
         _approval_section(item)
         _comment_section(item)
 
