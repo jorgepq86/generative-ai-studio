@@ -24,6 +24,9 @@ corresponde:
 | `redactor` | Editar Contenido · Galería e Historial (solo sección de textos) |
 | `aprobador` | Galería e Historial (ambas secciones, para poder revisar y aprobar cualquier tipo de contenido) |
 
+Arriba del menú lateral hay un botón **"Cerrar sesión"** para salir y
+volver a la pantalla de acceso.
+
 ### Página 1 — 🖼️ Generar Imagen
 
 `pages/1_Generar_Imagen.py`

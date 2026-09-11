@@ -19,6 +19,11 @@ def is_authenticated():
     return "role" in st.session_state
 
 
+def logout():
+    st.session_state.pop("role", None)
+    st.session_state.pop("user", None)
+
+
 def login_form():
     st.title("Acceso — Generative AI Studio")
     password = st.text_input("Contraseña", type="password")

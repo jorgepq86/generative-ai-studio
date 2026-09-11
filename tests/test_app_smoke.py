@@ -49,3 +49,16 @@ def test_login_with_wrong_password_shows_error():
     at.text_input[0].input("incorrecta").run()
     at.button[0].click().run()
     assert len(at.error) == 1
+
+
+def test_logout_clears_session_and_shows_login_form_again():
+    at = AppTest.from_file("app.py")
+    at.session_state["role"] = "redactor"
+    at.session_state["user"] = "redactor"
+    at.run()
+
+    at.sidebar.button[0].click().run()
+
+    assert "role" not in at.session_state
+    assert "user" not in at.session_state
+    assert at.title[0].value == "Acceso — Generative AI Studio"

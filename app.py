@@ -22,6 +22,11 @@ PAGES_BY_ROLE = {
     ],
 }
 
-st.caption(f"Sesión iniciada como **{st.session_state['role']}**")
+with st.sidebar:
+    st.caption(f"Sesión iniciada como **{st.session_state['role']}**")
+    if st.button("Cerrar sesión"):
+        auth.logout()
+        st.rerun()
+
 pg = st.navigation(PAGES_BY_ROLE[st.session_state["role"]])
 pg.run()
