@@ -61,7 +61,7 @@ def _invoke_with_retry(client, model_id, body, guardrail_id=None, guardrail_vers
     raise BedrockError("Bedrock sigue limitando la tasa de peticiones tras varios reintentos.") from last_error
 
 
-def invoke_claude(client, text, action, model_id="anthropic.claude-3-5-sonnet-20240620-v1:0",
+def invoke_claude(client, text, action, model_id="anthropic.claude-haiku-4-5-20251001-v1:0",
                    guardrail_id=None, guardrail_version=None, sleep_fn=time.sleep):
     action_prompts = {
         "resumir": "Resume el siguiente texto manteniendo las ideas clave:",

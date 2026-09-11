@@ -111,7 +111,7 @@ necesitas el usuario IAM de la app todavía para esto):
 
 1. Consola de AWS → Amazon Bedrock → confirma que estás en `us-east-1`.
 2. Menú lateral → "Chat / Text playground" (o "Model catalog" → abre
-   Claude 3.5 Sonnet → "Open in playground").
+   Claude Haiku 4.5 → "Open in playground").
 3. Envía un mensaje de prueba cualquiera ("hola") — si aparece el
    formulario de caso de uso, rellénalo brevemente y reenvía.
 4. Repite lo mismo con Stable Diffusion XL desde "Model catalog" (búscalo,
@@ -144,7 +144,7 @@ cat > genai-studio-policy.json <<EOF
       "Effect": "Allow",
       "Action": "bedrock:InvokeModel",
       "Resource": [
-        "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0",
+        "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
         "arn:aws:bedrock:us-east-1::foundation-model/stability.stable-diffusion-xl-v1"
       ]
     },
