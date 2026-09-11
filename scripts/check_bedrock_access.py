@@ -23,6 +23,12 @@ def _guardrail_action(response_metadata):
     return response_metadata.get("HTTPHeaders", {}).get("x-amzn-bedrock-guardrailaction", "(sin cabecera)")
 
 
+def _detail(error):
+    """Mensaje de diagnóstico real de AWS, no el mensaje genérico pensado para la UI."""
+    cause = error.__cause__
+    return f"\n  Detalle real de AWS: {cause}" if cause else ""
+
+
 def main():
     region = os.environ.get("AWS_REGION", "us-east-1")
     guardrail_id = os.environ.get("GUARDRAIL_ID")
@@ -50,9 +56,9 @@ def main():
         print(f"OK — respuesta: {text[:100]}")
         print(f"Acción del guardrail: {_guardrail_action(metadata)}")
     except bedrock_client.ModelAccessError as error:
-        print(f"SIN ACCESO a Claude: {error}")
+        print(f"SIN ACCESO a Claude: {error}{_detail(error)}")
     except bedrock_client.BedrockError as error:
-        print(f"ERROR con Claude: {error}")
+        print(f"ERROR con Claude: {error}{_detail(error)}")
 
     print("\nProbando Nova Canvas...")
     try:
@@ -63,9 +69,9 @@ def main():
         print(f"OK — imagen recibida ({len(image_bytes)} bytes)")
         print(f"Acción del guardrail: {_guardrail_action(metadata)}")
     except bedrock_client.ModelAccessError as error:
-        print(f"SIN ACCESO a Nova Canvas: {error}")
+        print(f"SIN ACCESO a Nova Canvas: {error}{_detail(error)}")
     except bedrock_client.BedrockError as error:
-        print(f"ERROR con Nova Canvas: {error}")
+        print(f"ERROR con Nova Canvas: {error}{_detail(error)}")
 
 
 if __name__ == "__main__":
