@@ -15,7 +15,14 @@ individuales — hay **una contraseña compartida por rol**:
 `diseñador`, `redactor`, `aprobador`. La contraseña que escribas determina
 con qué rol entras; no hay un desplegable para elegirlo.
 
-Una vez dentro, el menú lateral de Streamlit muestra tres páginas.
+El menú lateral **cambia según el rol** — cada uno ve solo lo que le
+corresponde:
+
+| Rol | Páginas visibles |
+|---|---|
+| `diseñador` | Generar Imagen · Galería e Historial (solo sección de imágenes) |
+| `redactor` | Editar Contenido · Galería e Historial (solo sección de textos) |
+| `aprobador` | Galería e Historial (ambas secciones, para poder revisar y aprobar cualquier tipo de contenido) |
 
 ### Página 1 — 🖼️ Generar Imagen
 

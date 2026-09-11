@@ -13,8 +13,6 @@ st.title("Galería e Historial")
 table = clients.get_history_table()
 items = history.list_items(table)
 
-tab_gallery, tab_history = st.tabs(["Galería de imágenes", "Historial de textos"])
-
 
 def _comment_section(item):
     with st.expander("Comentarios"):
@@ -38,7 +36,7 @@ def _approval_section(item):
                 st.rerun()
 
 
-with tab_gallery:
+def _render_gallery():
     image_items = [item for item in items if item.get("tipo") == "imagen"]
     if not image_items:
         st.info("Todavía no se han generado imágenes.")
@@ -52,7 +50,8 @@ with tab_gallery:
         _approval_section(item)
         _comment_section(item)
 
-with tab_history:
+
+def _render_history():
     text_items = [item for item in items if item.get("tipo") == "texto"]
     if not text_items:
         st.info("Todavía no se han editado textos.")
@@ -61,3 +60,17 @@ with tab_history:
         st.caption(item.get("resultado", "")[:300])
         _approval_section(item)
         _comment_section(item)
+
+
+role = st.session_state["role"]
+
+if role == "aprobador":
+    tab_gallery, tab_history = st.tabs(["Galería de imágenes", "Historial de textos"])
+    with tab_gallery:
+        _render_gallery()
+    with tab_history:
+        _render_history()
+elif role == "diseñador":
+    _render_gallery()
+else:
+    _render_history()
