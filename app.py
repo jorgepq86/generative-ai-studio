@@ -5,7 +5,7 @@ from lib import auth
 st.set_page_config(page_title="Generative AI Studio", page_icon="🎨")
 
 if not auth.is_authenticated():
-    auth.login_form()
+    st.navigation([st.Page(auth.login_form, title="Acceso")], position="hidden").run()
     st.stop()
 
 PAGES_BY_ROLE = {
