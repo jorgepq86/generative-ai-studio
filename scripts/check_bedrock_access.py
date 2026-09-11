@@ -1,4 +1,4 @@
-"""Smoke test manual: confirma que Claude y Stable Diffusion están accesibles en Bedrock.
+"""Smoke test manual: confirma que Claude y Nova Canvas están accesibles en Bedrock.
 
 Uso: python scripts/check_bedrock_access.py
 Requiere credenciales AWS configuradas (variables de entorno o ~/.aws/credentials),
@@ -7,10 +7,9 @@ opcionalmente la variable AWS_REGION (por defecto: us-east-1), y GUARDRAIL_ID
 
 GUARDRAIL_ID es obligatorio: la app en producción nunca invoca un modelo sin
 guardrail (lib/bedrock_client.py lo exige), así que este script prueba
-exactamente la misma ruta de código que usará la app — incluyendo si Stable
-Diffusion XL acepta guardrails en tu cuenta/región, algo que solo se puede
-confirmar contra Bedrock real. El script imprime la cabecera de acción del
-guardrail para cada modelo para que puedas verlo directamente.
+exactamente la misma ruta de código que usará la app. El script imprime la
+cabecera de acción del guardrail para cada modelo para que puedas verlo
+directamente.
 """
 import os
 import sys
@@ -55,23 +54,18 @@ def main():
     except bedrock_client.BedrockError as error:
         print(f"ERROR con Claude: {error}")
 
-    print("\nProbando Stable Diffusion...")
+    print("\nProbando Nova Canvas...")
     try:
-        image_bytes, metadata = bedrock_client.invoke_stable_diffusion(
-            client, "a red apple on a white table", "photographic",
+        image_bytes, metadata = bedrock_client.invoke_image(
+            client, "a red apple on a white table", "photorealistic, highly detailed",
             guardrail_id=guardrail_id, guardrail_version=guardrail_version,
         )
         print(f"OK — imagen recibida ({len(image_bytes)} bytes)")
         print(f"Acción del guardrail: {_guardrail_action(metadata)}")
     except bedrock_client.ModelAccessError as error:
-        print(f"SIN ACCESO a Stable Diffusion: {error}")
+        print(f"SIN ACCESO a Nova Canvas: {error}")
     except bedrock_client.BedrockError as error:
-        print(
-            f"ERROR con Stable Diffusion: {error}\n"
-            "Nota: si este error aparece solo aquí y Claude funcionó bien, es posible que "
-            "Stable Diffusion XL no acepte guardrails de Bedrock en tu cuenta/región — "
-            "revisa la consola de Bedrock Guardrails para confirmarlo."
-        )
+        print(f"ERROR con Nova Canvas: {error}")
 
 
 if __name__ == "__main__":

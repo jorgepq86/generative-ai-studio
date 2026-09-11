@@ -7,7 +7,7 @@ def test_generate_image_moderated_returns_bytes_when_not_intervened(monkeypatch)
     def fake_invoke(client, prompt, style, guardrail_id=None, guardrail_version=None, sleep_fn=None):
         return b"image-bytes", {"HTTPHeaders": {"x-amzn-bedrock-guardrailaction": "NONE"}}
 
-    monkeypatch.setattr(moderation.bedrock_client, "invoke_stable_diffusion", fake_invoke)
+    monkeypatch.setattr(moderation.bedrock_client, "invoke_image", fake_invoke)
 
     image_bytes, status = moderation.generate_image_moderated(
         client=object(), prompt="un gato", style="anime", guardrail_id="gr-1", guardrail_version="1"
@@ -21,7 +21,7 @@ def test_generate_image_moderated_raises_when_intervened(monkeypatch):
     def fake_invoke(client, prompt, style, guardrail_id=None, guardrail_version=None, sleep_fn=None):
         return b"", {"HTTPHeaders": {"x-amzn-bedrock-guardrailaction": "INTERVENED"}}
 
-    monkeypatch.setattr(moderation.bedrock_client, "invoke_stable_diffusion", fake_invoke)
+    monkeypatch.setattr(moderation.bedrock_client, "invoke_image", fake_invoke)
 
     with pytest.raises(moderation.ModerationBlocked):
         moderation.generate_image_moderated(

@@ -14,7 +14,7 @@ def _guardrail_status(response_metadata):
 
 
 def generate_image_moderated(client, prompt, style, guardrail_id, guardrail_version, sleep_fn=time.sleep):
-    image_bytes, metadata = bedrock_client.invoke_stable_diffusion(
+    image_bytes, metadata = bedrock_client.invoke_image(
         client, prompt, style, guardrail_id=guardrail_id, guardrail_version=guardrail_version, sleep_fn=sleep_fn
     )
     status = _guardrail_status(metadata)

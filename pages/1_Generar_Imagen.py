@@ -15,11 +15,11 @@ if not auth.is_authenticated():
 st.title("Generar Imagen")
 
 STYLE_PRESETS = {
-    "Anime": "anime",
-    "Pintura al óleo": "cinematic",
-    "Realismo fotográfico": "photographic",
-    "Boceto a lápiz": "line-art",
-    "Cyberpunk": "neon-punk",
+    "Anime": "anime style, vibrant colors",
+    "Pintura al óleo": "oil painting style, painterly brush strokes",
+    "Realismo fotográfico": "photorealistic, highly detailed",
+    "Boceto a lápiz": "pencil sketch, black and white line art",
+    "Cyberpunk": "cyberpunk style, neon lights, futuristic",
 }
 
 prompt = st.text_area("Describe la imagen que quieres generar")

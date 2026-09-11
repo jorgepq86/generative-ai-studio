@@ -83,17 +83,22 @@ def invoke_claude(client, text, action, model_id="anthropic.claude-haiku-4-5-202
     return result_text, response["ResponseMetadata"]
 
 
-def invoke_stable_diffusion(client, prompt, style, model_id="stability.stable-diffusion-xl-v1",
-                             guardrail_id=None, guardrail_version=None, sleep_fn=time.sleep):
+def invoke_image(client, prompt, style, model_id="amazon.nova-canvas-v1:0",
+                  guardrail_id=None, guardrail_version=None, sleep_fn=time.sleep):
+    full_prompt = f"{prompt}, {style}" if style else prompt
     body = {
-        "text_prompts": [{"text": prompt}],
-        "style_preset": style,
-        "cfg_scale": 10,
-        "steps": 30,
+        "taskType": "TEXT_IMAGE",
+        "textToImageParams": {"text": full_prompt},
+        "imageGenerationConfig": {
+            "numberOfImages": 1,
+            "height": 1024,
+            "width": 1024,
+            "cfgScale": 6.5,
+        },
     }
     response = _invoke_with_retry(
         client, model_id, body, guardrail_id=guardrail_id, guardrail_version=guardrail_version, sleep_fn=sleep_fn
     )
     payload = json.loads(response["body"].read())
-    image_bytes = base64.b64decode(payload["artifacts"][0]["base64"])
+    image_bytes = base64.b64decode(payload["images"][0])
     return image_bytes, response["ResponseMetadata"]

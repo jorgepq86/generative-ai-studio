@@ -22,9 +22,9 @@ def _claude_response(text):
     }
 
 
-def _sd_response(b64_image):
+def _image_response(b64_image):
     return {
-        "body": FakeStreamingBody(json.dumps({"artifacts": [{"base64": b64_image}]}).encode()),
+        "body": FakeStreamingBody(json.dumps({"images": [b64_image]}).encode()),
         "ResponseMetadata": {"HTTPHeaders": {}},
     }
 
@@ -88,17 +88,34 @@ def test_invoke_claude_raises_bedrock_error_on_validation_exception():
     assert fake_client.invoke_model.call_count == 1
 
 
-def test_invoke_stable_diffusion_returns_decoded_image_bytes():
+def test_invoke_image_returns_decoded_image_bytes():
     import base64
 
     fake_client = MagicMock()
-    fake_client.invoke_model.return_value = _sd_response(base64.b64encode(b"fake-png-bytes").decode())
+    fake_client.invoke_model.return_value = _image_response(base64.b64encode(b"fake-png-bytes").decode())
 
-    image_bytes, _ = bedrock_client.invoke_stable_diffusion(
-        fake_client, "a red apple", "anime", guardrail_id="gr-1", guardrail_version="1", sleep_fn=lambda s: None
+    image_bytes, _ = bedrock_client.invoke_image(
+        fake_client, "a red apple", "anime style", guardrail_id="gr-1", guardrail_version="1", sleep_fn=lambda s: None
     )
 
     assert image_bytes == b"fake-png-bytes"
+
+
+def test_invoke_image_builds_nova_canvas_request_body():
+    import base64
+
+    fake_client = MagicMock()
+    fake_client.invoke_model.return_value = _image_response(base64.b64encode(b"x").decode())
+
+    bedrock_client.invoke_image(
+        fake_client, "a red apple", "anime style", guardrail_id="gr-1", guardrail_version="1", sleep_fn=lambda s: None
+    )
+
+    _, kwargs = fake_client.invoke_model.call_args
+    body = json.loads(kwargs["body"])
+    assert body["taskType"] == "TEXT_IMAGE"
+    assert body["textToImageParams"]["text"] == "a red apple, anime style"
+    assert "imageGenerationConfig" in body
 
 
 def test_invoke_passes_guardrail_params_to_invoke_model():

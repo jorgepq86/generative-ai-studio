@@ -56,9 +56,9 @@ Con el usuario **root** recién creado, antes de hacer nada más:
    "Budgets" → "Create budget" → "Cost budget" → pon un límite mensual
    (por ejemplo, $20) y tu correo para el aviso.
 3. **Elige tu región principal**: este proyecto usa `us-east-1` (Norte de
-   Virginia) por defecto, porque ahí están disponibles tanto Claude 3.5
-   Sonnet como Stability SDXL en Bedrock. Puedes cambiarla más adelante en
-   los secrets si prefieres otra región donde ambos modelos también estén
+   Virginia) por defecto, porque ahí están disponibles tanto Claude Haiku 4.5
+   como Nova Canvas en Bedrock. Puedes cambiarla más adelante en los
+   secrets si prefieres otra región donde ambos modelos también estén
    disponibles, pero **no lo hagas** a menos que sepas que tu región
    alternativa los soporta — si no, la app fallará al invocar los modelos.
 
@@ -92,40 +92,37 @@ Con el usuario **root** recién creado, antes de hacer nada más:
 ## 4. Activar los modelos de Bedrock
 
 AWS retiró la pantalla manual de "Model access": los modelos serverless de
-Bedrock (como Claude) se activan automáticamente en toda cuenta la primera
-vez que se invocan — no hay nada que aprobar de antemano. Aun así, hay dos
-casos donde se necesita un paso extra antes de que la app pueda usarlos:
+Bedrock (Claude, Nova Canvas) se activan automáticamente en toda cuenta la
+primera vez que se invocan — no hay nada que aprobar de antemano. La
+primera vez que invocas Claude desde una cuenta nueva, puede pedirte que
+rellenes un breve formulario de "caso de uso" — ocurre automáticamente, no
+hay que activarlo por separado.
 
-1. **Claude (Anthropic)**: la primera vez que se invoca desde una cuenta
-   nueva, puede pedir que rellenes un breve formulario de "caso de uso".
-   Esto ocurre automáticamente al invocar el modelo por primera vez — no
-   hay que activarlo por separado.
-2. **Stable Diffusion XL (Stability AI, vía AWS Marketplace)**: los modelos
-   servidos desde AWS Marketplace necesitan que alguien con permisos de
-   Marketplace lo invoque **una vez** para activarlo a nivel de cuenta;
-   después de esa primera invocación queda habilitado para todos los
-   usuarios/roles IAM de la cuenta.
-
-**Cómo activarlos en la práctica** — usa el Playground de la consola (no
+**Cómo probarlos en la práctica** — usa el Playground de la consola (no
 necesitas el usuario IAM de la app todavía para esto):
 
 1. Consola de AWS → Amazon Bedrock → confirma que estás en `us-east-1`.
-2. Menú lateral → "Chat / Text playground" (o "Model catalog" → abre
-   Claude Haiku 4.5 → "Open in playground").
-3. Envía un mensaje de prueba cualquiera ("hola") — si aparece el
-   formulario de caso de uso, rellénalo brevemente y reenvía.
-4. Repite lo mismo con Stable Diffusion XL desde "Model catalog" (búscalo,
-   ábrelo en el playground de imagen) — genera una imagen de prueba con
-   cualquier prompt. Esta es la invocación que lo activa a nivel de cuenta.
-5. No hace falta esperar "Access granted" en ninguna pantalla — si el
+2. Menú lateral → "Chat / Text playground" → abre **Claude Haiku 4.5** →
+   envía un mensaje de prueba ("hola") — si aparece el formulario de caso
+   de uso, rellénalo brevemente y reenvía.
+3. Menú lateral → "Image playground" (o "Model catalog" → busca **Nova
+   Canvas**, aparece marcado "Legacy" pero sigue plenamente soportado) →
+   genera una imagen de prueba con cualquier prompt.
+4. No hace falta esperar "Access granted" en ninguna pantalla — si el
    playground responde, el modelo ya está activo para la cuenta.
 
-Si más adelante `scripts/check_bedrock_access.py` (paso 9) falla para
-Stable Diffusion específicamente con un error de suscripción/Marketplace,
-vuelve aquí y confirma que de verdad lo invocaste una vez desde el
-playground con un usuario que tenga permisos de Marketplace (normalmente
-cualquier usuario con acceso a la consola los tiene, salvo que tu cuenta
-tenga políticas de Service Control muy restrictivas).
+> **Nota sobre el modelo de imágenes:** el enunciado original de este caso
+> práctico pide Stable Diffusion. En Bedrock, Stable Diffusion XL 1.0 ya no
+> se ofrece como modelo serverless — solo está disponible vía AWS
+> Marketplace desplegado como endpoint dedicado de SageMaker, con coste
+> fijo por hora (`ml.p5.48xlarge` a partir de ~$137/hora **de software**,
+> más el coste de la instancia, corriendo esté en uso o no). La versión más
+> reciente (Stable Diffusion 3.5 Large) solo está disponible vía "Bedrock
+> Marketplace" con el mismo modelo de coste por hora. Para un proyecto de
+> este tipo, ese coste no es razonable, así que se sustituyó por **Amazon
+> Nova Canvas** (`amazon.nova-canvas-v1:0`), que cumple la misma función —
+> generación de imágenes a partir de texto con distintos estilos — de forma
+> serverless (facturación solo por imagen generada, sin coste si no se usa).
 
 ## 5. Crear el usuario IAM de la aplicación (permisos mínimos)
 
@@ -145,7 +142,7 @@ cat > genai-studio-policy.json <<EOF
       "Action": "bedrock:InvokeModel",
       "Resource": [
         "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
-        "arn:aws:bedrock:us-east-1::foundation-model/stability.stable-diffusion-xl-v1"
+        "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-canvas-v1:0"
       ]
     },
     {
@@ -239,16 +236,12 @@ export GUARDRAIL_VERSION="1"   # o el número de versión que hayas publicado
 python scripts/check_bedrock_access.py
 ```
 
-Deberías ver `OK` para Claude y para Stable Diffusion, con la acción del
+Deberías ver `OK` para Claude y para Nova Canvas, con la acción del
 guardrail impresa para cada uno (normalmente `NONE`, que significa "no
 intervenido" — es el resultado correcto para un prompt inofensivo).
 
-- Si ves `SIN ACCESO`, vuelve al paso 4: el acceso al modelo no está
-  concedido todavía en esa cuenta/región.
-- Si Claude funciona pero Stable Diffusion falla específicamente con un
-  error de guardrail, puede que SDXL no acepte guardrails de Bedrock en tu
-  cuenta/región — el propio script te avisa de esto; revisa la consola de
-  Guardrails para confirmarlo antes de desplegar.
+Si ves `SIN ACCESO`, vuelve al paso 4: el acceso al modelo no está concedido
+todavía en esa cuenta/región.
 
 ## 10. Configurar los secretos de la app
 
