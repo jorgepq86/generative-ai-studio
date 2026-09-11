@@ -228,6 +228,21 @@ echo "Bucket creado: $BUCKET_NAME"
 
 Guarda el valor de `$BUCKET_NAME` — es el `s3_bucket` de los secrets.
 
+> Si `create-bucket` falla con `OperationAborted: A conflicting conditional
+> operation is currently in progress`, incluso después de confirmar con
+> `aws s3api head-bucket --bucket "$BUCKET_NAME" --region us-west-2` que el
+> bucket no existe (`404 Not Found`): puede quedar un bloqueo interno de
+> AWS sobre ese nombre concreto, especialmente si borraste y volviste a
+> intentar crear el mismo nombre varias veces seguidas. No merece la pena
+> esperar a que se resuelva solo — usa un nombre con un sufijo único:
+> ```bash
+> BUCKET_NAME="genai-studio-images-${ACCOUNT_ID}-$(date +%s)"
+> ```
+> `$ACCOUNT_ID` y `$BUCKET_NAME` son variables de shell — si abres una
+> sesión nueva de CloudShell tendrás que redefinirlas antes de usarlas
+> (no persisten entre sesiones). Verifica con `echo "$BUCKET_NAME"` si no
+> estás seguro de que sigan definidas.
+
 ## 7. Crear la tabla DynamoDB
 
 ```bash
@@ -240,9 +255,11 @@ aws dynamodb create-table \
   --region us-west-2
 ```
 
-Verifica que quedó activa (puede tardar unos segundos):
+Verifica que quedó activa (puede tardar unos segundos) — **incluye
+`--region`**, si no el comando mira la región por defecto de tu CLI, que
+puede no ser `us-west-2`:
 ```bash
-aws dynamodb describe-table --table-name content_history --query "Table.TableStatus"
+aws dynamodb describe-table --table-name content_history --region us-west-2 --query "Table.TableStatus"
 ```
 Debe decir `"ACTIVE"`.
 
