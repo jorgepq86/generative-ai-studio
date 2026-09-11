@@ -212,8 +212,13 @@ secrets de Streamlit (paso 9).
 
 ## 6. Crear el bucket S3
 
+> `--create-bucket-configuration` es obligatorio para cualquier región
+> distinta de `us-east-1` — si lo omites, AWS devuelve
+> `IllegalLocationConstraintException`.
+
 ```bash
-aws s3api create-bucket --bucket "$BUCKET_NAME" --region us-west-2
+aws s3api create-bucket --bucket "$BUCKET_NAME" --region us-west-2 \
+  --create-bucket-configuration LocationConstraint=us-west-2
 aws s3api put-bucket-encryption --bucket "$BUCKET_NAME" \
   --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
 aws s3api put-public-access-block --bucket "$BUCKET_NAME" \
