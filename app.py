@@ -4,8 +4,10 @@ from lib import auth
 
 st.set_page_config(page_title="Generative AI Studio", page_icon="🎨")
 
+LOGIN_PAGE = st.Page(auth.login_form, title="Acceso", url_path="", default=True)
+
 if not auth.is_authenticated():
-    st.navigation([st.Page(auth.login_form, title="Acceso")], position="hidden").run()
+    st.navigation([LOGIN_PAGE], position="hidden").run()
     st.stop()
 
 PAGES_BY_ROLE = {
@@ -26,7 +28,7 @@ with st.sidebar:
     st.caption(f"Sesión iniciada como **{st.session_state['role']}**")
     if st.button("Cerrar sesión"):
         auth.logout()
-        st.rerun()
+        st.switch_page(LOGIN_PAGE)
 
 pg = st.navigation(PAGES_BY_ROLE[st.session_state["role"]])
 pg.run()
