@@ -14,7 +14,10 @@ def _guardrail_status(response_metadata):
 
 
 def generate_image_moderated(client, prompt, style, guardrail_id, guardrail_version, sleep_fn=time.sleep):
-    image_bytes, _ = bedrock_client.invoke_image(client, prompt, style, sleep_fn=sleep_fn)
+    try:
+        image_bytes, _ = bedrock_client.invoke_image(client, prompt, style, sleep_fn=sleep_fn)
+    except bedrock_client.ContentFilteredError as error:
+        raise ModerationBlocked() from error
     status = bedrock_client.apply_guardrail_image(
         client, image_bytes, guardrail_id, guardrail_version, sleep_fn=sleep_fn
     )

@@ -126,6 +126,17 @@ def test_invoke_image_does_not_pass_guardrail_params():
     assert "guardrailVersion" not in kwargs
 
 
+def test_invoke_image_raises_content_filtered_error_when_stability_rejects_prompt():
+    fake_client = MagicMock()
+    fake_client.invoke_model.return_value = {
+        "body": FakeStreamingBody(json.dumps({"finish_reasons": ["Filter reason: prompt"]}).encode()),
+        "ResponseMetadata": {"HTTPHeaders": {}},
+    }
+
+    with pytest.raises(bedrock_client.ContentFilteredError):
+        bedrock_client.invoke_image(fake_client, "prompt rechazado", "anime style", sleep_fn=lambda s: None)
+
+
 def test_apply_guardrail_image_returns_none_when_not_intervened():
     fake_client = MagicMock()
     fake_client.apply_guardrail.return_value = {"action": "NONE"}

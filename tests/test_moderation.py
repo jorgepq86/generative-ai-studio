@@ -37,6 +37,18 @@ def test_generate_image_moderated_raises_when_intervened(monkeypatch):
         )
 
 
+def test_generate_image_moderated_raises_when_stability_filter_rejects_prompt(monkeypatch):
+    def fake_invoke_image(client, prompt, style, sleep_fn=None):
+        raise moderation.bedrock_client.ContentFilteredError("El modelo de imagen rechazó la petición: Filter reason: prompt")
+
+    monkeypatch.setattr(moderation.bedrock_client, "invoke_image", fake_invoke_image)
+
+    with pytest.raises(moderation.ModerationBlocked):
+        moderation.generate_image_moderated(
+            client=object(), prompt="un paisaje", style="anime", guardrail_id="gr-1", guardrail_version="1"
+        )
+
+
 def test_edit_text_moderated_returns_text_when_not_intervened(monkeypatch):
     def fake_invoke(client, text, action, guardrail_id=None, guardrail_version=None, sleep_fn=None):
         return "texto editado", {"HTTPHeaders": {"x-amzn-bedrock-guardrailaction": "NONE"}}

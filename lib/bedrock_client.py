@@ -13,6 +13,10 @@ class ModelAccessError(BedrockError):
     """La cuenta/rol no tiene acceso al modelo solicitado."""
 
 
+class ContentFilteredError(BedrockError):
+    """El propio filtro de seguridad del modelo de imagen rechazó el prompt o la salida."""
+
+
 def get_client(region_name, aws_access_key_id=None, aws_secret_access_key=None):
     import boto3
     return boto3.client(
@@ -98,6 +102,15 @@ def invoke_image(client, prompt, style, model_id="stability.sd3-5-large-v1:0", s
     }
     response = _invoke_with_retry(client, model_id, body, sleep_fn=sleep_fn)
     payload = json.loads(response["body"].read())
+    if "images" not in payload:
+        # El propio filtro de seguridad de Stability AI (independiente del
+        # Guardrail de Bedrock, que solo se aplica después vía ApplyGuardrail)
+        # puede rechazar un prompt sin generar ninguna imagen. En ese caso la
+        # respuesta solo trae "finish_reasons", sin la clave "images".
+        reasons = payload.get("finish_reasons", ["motivo desconocido"])
+        raise ContentFilteredError(
+            f"El modelo de imagen rechazó la petición: {', '.join(str(r) for r in reasons)}"
+        )
     image_bytes = base64.b64decode(payload["images"][0])
     return image_bytes, response["ResponseMetadata"]
 
