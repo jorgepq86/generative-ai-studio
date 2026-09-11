@@ -179,6 +179,11 @@ cat > genai-studio-policy.json <<EOF
     },
     {
       "Effect": "Allow",
+      "Action": ["aws-marketplace:ViewSubscriptions", "aws-marketplace:Subscribe"],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
       "Action": ["s3:PutObject", "s3:GetObject"],
       "Resource": "arn:aws:s3:::${BUCKET_NAME}/images/*"
     },
@@ -200,7 +205,20 @@ aws iam create-access-key --user-name genai-studio-app
 El último comando imprime un `AccessKeyId` y `SecretAccessKey` — **guárdalos
 ahora**, el `SecretAccessKey` no se puede volver a consultar después. Estos
 son los valores para `aws_access_key_id`/`aws_secret_access_key` en los
-secrets de Streamlit (paso 9).
+secrets de Streamlit (paso 9). Trátalos como una contraseña: no los pegues
+en chats, tickets ni commits — si se exponen por accidente, rota la key
+inmediatamente (`aws iam create-access-key` + `aws iam delete-access-key`
+sobre la antigua).
+
+> Los modelos de Stability AI en Bedrock (incluido Stable Diffusion 3.5
+> Large) están vendidos vía AWS Marketplace por debajo, aunque se invoquen
+> como modelos serverless normales — Bedrock verifica la suscripción del
+> **usuario IAM que invoca**, no solo de la cuenta. Sin
+> `aws-marketplace:ViewSubscriptions`/`Subscribe`, `invoke_model` falla con
+> `AccessDeniedException: ... required AWS Marketplace actions`. Estas dos
+> acciones no se pueden acotar a un recurso específico (Marketplace no lo
+> soporta), de ahí el `Resource: "*"` en esa entrada de la política —
+> excepción razonable dentro de una política ya bastante acotada.
 
 > El ARN del `inference-profile` para Claude y el rango `us-*` en el ARN del
 > `foundation-model` son la mejor aproximación disponible sin acceso a un
@@ -266,6 +284,12 @@ Debe decir `"ACTIVE"`.
 ## 8. Crear un Guardrail en Bedrock
 
 No hay un único comando CLI simple para esto — se hace en la consola:
+
+> **Confirma la región antes de crear nada**: arriba a la derecha de la
+> consola debe decir "US West (Oregon)", no "US East (N. Virginia)" u otra.
+> Los guardrails son específicos de cada región y no se pueden mover — si
+> lo creas en la región equivocada, tendrás que borrarlo y repetir el
+> proceso en `us-west-2`.
 
 1. Consola de AWS → Amazon Bedrock → menú lateral "Guardrails" → "Create
    guardrail".
